@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: ro_database
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ra_root_pass
+      MYSQL_DATABASE: ragnarok
+      MYSQL_USER: ragnarok
+      MYSQL_PASSWORD: ragnarok
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - ro_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "ragnarok", "-pragnarok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rathena:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ro_server
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "6900:6900"   # Login Server
+      - "6121:6121"   # Char Server
+      - "5121:5121"   # Map Server
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USER: ragnarok
+      DB_PASSWORD: ragnarok
+      DB_NAME: ragnarok
+    networks:
+      - ro_network
+    volumes:
+      - ./logs:/rathena/log
+
+networks:
+  ro_network:
+    driver: bridge
+
+volumes:
+  db_data:
